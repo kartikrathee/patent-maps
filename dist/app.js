@@ -66,3 +66,37 @@ function renderInspector() {
   $('selected-scale').textContent = node ? node.scale === 'local' ? 'LOCAL DETAIL' : 'GLOBAL CLUSTER' : 'NO SELECTION';
   $('selected-city').textContent = node?.city ?? 'No cluster selected';
   $('selected-coordinates').textContent = node ? `${node.lat.toFixed(4)}°, ${node.lng.toFixed(4)}°` : '—';
+  $('selected-count').textContent = node?.count ?? '—';
+  $('selected-age').textContent = node ? node.meanAge.toFixed(1) : '—';
+  $('selected-application').textContent = node?.application ?? '—';
+  $('selected-links').textContent = node ? state.graph.edges.filter(e => e.source === node.id || e.target === node.id).length : '—';
+  $('focus-button').disabled = !node;
+  $('maps-link').hidden = !node;
+  if (node) $('maps-link').href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${node.lat},${node.lng}`)}`;
+  const ids = new Set(node?.members ?? []), records = state.points.filter(p => ids.has(p.id)).slice(0, 5);
+  $('sample-count').textContent = records.length;
+  records.forEach(point => {
+    const row = document.createElement('div'); row.className = 'record-row';
+    const name = document.createElement('span'); name.textContent = point.id; name.title = point.id;
+    const detail = document.createElement('small'); detail.textContent = `Age ${point.age} · ${point.application}`;
+    row.append(name, detail); $('record-list').append(row);
+  });
+}
+function restorePreview() {
+  if (live) { live.destroy(); live = null; }
+  adapter = preview; $('google-map').hidden = true; $('preview-map').hidden = false;
+  $('mode-label').textContent = 'Preview map'; $('google-button').textContent = 'Connect Google Maps';
+  $('map-note').hidden = false; draw(); adapter.fit(state.points);
+}
+async function connect(key, mapId) {
+  $('connect-submit').disabled = true; $('connect-submit').textContent = 'Connecting…'; $('google-error').textContent = '';
+  try {
+    await loadGoogleMaps(key, () => { restorePreview(); notify('Google Maps could not authenticate the key. Check its API and website restrictions.'); });
+    $('google-map').hidden = false;
+    live = await googleMapAdapter($('google-map'), mapId, selectNode);
+    adapter = live; $('preview-map').hidden = true; $('map-note').hidden = true;
+    $('mode-label').textContent = 'Google Maps'; $('google-button').textContent = 'Google Maps connected';
+    draw(); adapter.fit(state.points); $('google-dialog').close(); $('maps-key').value = '';
+    notify('Google Maps connected. Your clusters are ready to explore.');
+  } catch {
+    restorePreview(); $('google-error').textContent = 'Could not connect. Check the key, enabled Maps JavaScript API and website restrictions. Reload before trying a different key.';
