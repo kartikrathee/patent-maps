@@ -100,3 +100,37 @@ async function connect(key, mapId) {
     notify('Google Maps connected. Your clusters are ready to explore.');
   } catch {
     restorePreview(); $('google-error').textContent = 'Could not connect. Check the key, enabled Maps JavaScript API and website restrictions. Reload before trying a different key.';
+    if (!$('google-dialog').open) $('google-dialog').showModal();
+  } finally { $('connect-submit').disabled = false; $('connect-submit').textContent = 'Connect map'; }
+}
+$('google-form').onsubmit = event => { event.preventDefault(); connect($('maps-key').value, $('maps-id').value || config.mapId); };
+$('google-button').onclick = () => { if (!live) $('google-dialog').showModal(); else adapter.fit(state.points); };
+$('about-button').onclick = () => $('about-dialog').showModal();
+document.querySelectorAll('.dialog-close').forEach(button => { button.onclick = () => button.closest('dialog').close(); });
+$('search').oninput = () => { clearTimeout(debounce); debounce = setTimeout(update, 150); };
+for (const id of ['resolution', 'overlap', 'refine']) $(id).oninput = update;
+$('points').onchange = () => { state.showPoints = $('points').checked; draw(); };
+$('clear-filter').onclick = $('empty-clear').onclick = () => { $('search').value = ''; update(); };
+$('fit-button').onclick = () => adapter.fit(state.points);
+$('zoom-in').onclick = () => adapter.zoom(1); $('zoom-out').onclick = () => adapter.zoom(-1);
+$('focus-button').onclick = () => { const node = state.graph.nodes.find(n => n.id === state.selected); if (node) adapter.focus(node); };
+$('import-button').onclick = () => $('file-input').click();
+$('file-input').onchange = async () => {
+  const file = $('file-input').files[0]; if (!file) return;
+  try {
+    if (file.size > 2_000_000) throw new Error('Choose a JSON file smaller than 2 MB.');
+    const records = validateRecords(JSON.parse(await file.text()));
+    state.data = records; $('search').value = '';
+    $('dataset-badge').textContent = `Imported dataset · ${records.length} records`;
+    update(); notify(`Imported ${records.length} records. Your dataset stays in this browser.`);
+  } catch (error) { notify(error instanceof SyntaxError ? 'This file is not valid JSON. Import an array of records.' : error.message); }
+  finally { $('file-input').value = ''; }
+};
+$('reset-button').onclick = () => { state.data = sampleData(); $('search').value = ''; $('dataset-badge').textContent = 'Synthetic sample · 5 cities'; update(); notify('Sample dataset restored.'); };
+$('download-sample').onclick = () => {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(sampleData(), null, 2)], { type: 'application/json' }));
+  const link = document.createElement('a'); link.href = url; link.download = 'scale-atlas-sample.json'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+update();
+if (config.googleMapsApiKey) connect(config.googleMapsApiKey, config.mapId);
