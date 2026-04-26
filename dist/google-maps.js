@@ -32,3 +32,37 @@ export async function googleMapAdapter(element, mapId, onSelect) {
     map.data.forEach(feature => map.data.remove(feature));
   }
   return {
+    draw(graph, points, selected, showPoints) {
+      clear();
+      const nodes = new globalThis.Map(graph.nodes.map(node => [node.id, node]));
+      if (showPoints) {
+        map.data.addGeoJson({ type: 'FeatureCollection', features: points.map(p => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: {} })) });
+        map.data.setStyle({ icon: { path: google.maps.SymbolPath.CIRCLE, scale: 2, fillColor: '#68809b', fillOpacity: .5, strokeWeight: 0 }, clickable: false });
+      }
+      graph.edges.forEach(edge => {
+        const a = nodes.get(edge.source), b = nodes.get(edge.target);
+        lines.push(new Polyline({ map, path: [{ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng }], strokeColor: edge.crossScale ? '#ef8b38' : '#547fbb', strokeOpacity: .7, strokeWeight: edge.crossScale ? 3 : 1.5, clickable: false }));
+      });
+      graph.nodes.forEach(node => {
+        const button = document.createElement('button');
+        button.className = `map-node ${node.scale} ${node.id === selected ? 'selected' : ''}`;
+        button.textContent = node.count;
+        button.title = `${node.city}: ${node.count} records (${node.scale} scale)`;
+        button.setAttribute('aria-label', button.title);
+        button.addEventListener('click', () => onSelect(node.id));
+        const marker = new AdvancedMarkerElement({ map, position: { lat: node.lat, lng: node.lng }, content: button, title: button.title, zIndex: node.id === selected ? 1000 : node.scale === 'local' ? 20 : 10 });
+        markers.push(marker);
+      });
+    },
+    fit(points) {
+      if (!points.length) return;
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
+      map.fitBounds(bounds, 70);
+      if (points.length === 1) map.setZoom(12);
+    },
+    focus(node) { map.panTo({ lat: node.lat, lng: node.lng }); map.setZoom(node.scale === 'local' ? 8 : 6); },
+    zoom(delta) { map.setZoom((map.getZoom() ?? 4) + delta); },
+    destroy() { clear(); google.maps.event.clearInstanceListeners(map); element.replaceChildren(); },
+  };
+}
