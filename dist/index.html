@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore geographic data at multiple scales with overlapping clusters, density-based refinement, and Google Maps.">
+  <meta name="theme-color" content="#142b26"><title>Scale Atlas — a closer look at your data</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Scale Atlas home"><span class="brand-mark">◈</span><span>scale<span class="brand-light">atlas</span></span></a>
+    <span class="header-label">GEOSPATIAL EXPLORER</span>
+    <div class="top-actions"><span class="dataset-badge" id="dataset-badge">Synthetic sample · 5 cities</span><button class="quiet" id="about-button">How it works <span>↗</span></button><button id="google-button" class="primary">Connect Google Maps</button></div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="intro"><span class="eyebrow">SEE THE BIG PICTURE. FIND THE DETAIL.</span><h1>A closer look<br>at your data.</h1><p>Discover patterns across places.<br>Let the busiest areas tell you more.</p></div>
+      <label class="search-label" for="search">Search locations</label><div class="search-box"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="City or application" autocomplete="off" aria-label="Search city or application"></div>
+      <div class="section-heading"><h2>Locations</h2><button id="clear-filter" class="text-button">Show all</button></div>
+      <div id="locations" class="locations" aria-label="Filter by location"></div>
+      <div class="section-heading controls-heading"><h2>Explore at your scale</h2><span class="tiny-pill">ADAPTIVE</span></div>
+      <div class="control-row"><label for="resolution">Global resolution</label><output id="resolution-value">5 × 5</output></div><input id="resolution" type="range" min="2" max="9" value="5" aria-label="Global cover resolution">
+      <div class="control-row"><label for="overlap">Cluster overlap</label><output id="overlap-value">35%</output></div><input id="overlap" type="range" min="0" max="65" value="35" step="5" aria-label="Cover overlap percentage">
+      <label class="switch-row"><span><strong>Refine dense areas</strong><small>A closer view, automatically</small></span><input id="refine" type="checkbox" checked role="switch"></label>
+      <label class="checkbox-row"><input id="points" type="checkbox" checked> Show individual records</label>
+      <div class="sidebar-bottom"><button class="import-button" id="import-button">↑ &nbsp; Import your dataset <span>JSON</span></button><input id="file-input" type="file" accept="application/json,.json" hidden><button id="reset-button" class="text-button reset">Restore sample dataset</button><p class="sample-note">Sample locations come from the supplied document. The 640 records are synthetic.</p></div>
