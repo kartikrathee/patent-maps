@@ -24,3 +24,16 @@
       <label class="switch-row"><span><strong>Refine dense areas</strong><small>A closer view, automatically</small></span><input id="refine" type="checkbox" checked role="switch"></label>
       <label class="checkbox-row"><input id="points" type="checkbox" checked> Show individual records</label>
       <div class="sidebar-bottom"><button class="import-button" id="import-button">↑ &nbsp; Import your dataset <span>JSON</span></button><input id="file-input" type="file" accept="application/json,.json" hidden><button id="reset-button" class="text-button reset">Restore sample dataset</button><p class="sample-note">Sample locations come from the supplied document. The 640 records are synthetic.</p></div>
+    </aside>
+    <section class="map-panel" aria-label="Map workspace">
+      <div class="map-toolbar"><div><span class="live-dot"></span><strong id="mode-label">Preview map</strong><span class="toolbar-divider"></span><span id="scale-label">Global + local detail</span></div><button id="fit-button" class="small-button">⌖ &nbsp; Fit to data</button></div>
+      <div class="map-stage"><div id="preview-map" class="map-surface"></div><div id="google-map" class="map-surface" hidden></div>
+        <div class="map-heading"><span class="eyebrow">EVERY LOCATION HAS A STORY</span><h2>One map. More perspective.</h2><p id="map-description">640 records, connected across 5 cities.</p></div>
+        <div class="map-legend"><span><i class="legend-dot global"></i>Global cluster</span><span><i class="legend-dot local"></i>Local detail</span><span><i class="legend-line"></i>Shared records</span></div>
+        <div class="zoom-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button></div>
+        <div class="map-note" id="map-note">Illustrative basemap · connect Google Maps for live cartography</div>
+        <div class="empty-state" id="empty-state" hidden><h3>No matching records</h3><p>Try another location or application.</p><button class="primary" id="empty-clear">Clear search</button></div>
+      </div>
+      <div class="metrics"><div><span>RECORDS IN VIEW</span><strong id="record-count">—</strong></div><div><span>CONNECTED CLUSTERS</span><strong id="cluster-count">—</strong></div><div><span>SHARED RECORD LINKS</span><strong id="edge-count">—</strong></div><div class="metric-detail"><span>LOCAL REFINEMENT</span><strong id="refinement-count">—</strong></div></div>
+    </section>
+    <aside class="inspector">
