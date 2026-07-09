@@ -19,3 +19,25 @@ export function previewMapAdapter(element, onSelect) {
     const region = graph.region ? `<rect x="${(graph.region.x0-view.x)/view.width*1000+500}" y="${(graph.region.y0-view.y)/view.width*1000+320}" width="${(graph.region.x1-graph.region.x0)/view.width*1000}" height="${(graph.region.y1-graph.region.y0)/view.width*1000}" rx="8" class="refined-region"/>` : '';
     const links = graph.edges.map(edge => {
       const a = nodes.get(edge.source), b = nodes.get(edge.target), [x1,y1] = coord(a.lat,a.lng), [x2,y2] = coord(b.lat,b.lng);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="connection ${edge.crossScale ? 'cross' : ''}"/>`;
+    }).join('');
+    const markers = graph.nodes.map(node => {
+      const [x,y] = coord(node.lat,node.lng), radius = Math.min(21, 7 + Math.sqrt(node.count));
+      return `<g role="button" tabindex="0" aria-label="${escape(`${node.city}, ${node.count} records, ${node.scale} cluster`)}" data-node="${node.id}" class="svg-node ${node.scale} ${node.id===selected?'selected':''}" transform="translate(${x} ${y})"><title>${escape(node.city)} · ${node.count} records</title><circle r="${radius}"/><text dy="4">${node.count}</text></g>`;
+    }).join('');
+    element.innerHTML = `<svg class="preview-canvas" viewBox="0 0 1000 640" aria-label="Interactive illustrative map of clustered records"><rect width="1000" height="640" fill="#e9eff1"/><g class="graticule">${grid}</g><polygon points="${path(mainland)}" class="land"/><g class="state-labels">${labels.map(([lng,lat,name])=>{const [x,y]=coord(lat,lng);return `<text x="${x}" y="${y}">${name}</text>`;}).join('')}</g>${region}${showPoints?points.map(p=>{const [x,y]=coord(p.lat,p.lng);return `<circle cx="${x}" cy="${y}" r="1.8" class="record-dot"/>`;}).join(''):''}<g>${links}</g>${markers}</svg>`;
+  }
+  element.addEventListener('click', event => { const node=event.target.closest('[data-node]'); if(node) onSelect(node.dataset.node); });
+  element.addEventListener('keydown', event => { const node=event.target.closest('[data-node]'); if(node && ['Enter',' '].includes(event.key)){event.preventDefault();onSelect(node.dataset.node);} });
+  element.addEventListener('pointerdown', event => { if(event.target.closest('[data-node]'))return; drag={x:event.clientX,y:event.clientY,view:{...view}}; element.setPointerCapture(event.pointerId); });
+  element.addEventListener('pointermove', event => { if(!drag)return; const scale=view.width/element.clientWidth;view.x=drag.view.x-(event.clientX-drag.x)*scale;view.y=drag.view.y-(event.clientY-drag.y)*scale;render(); });
+  const finish = () => { drag=null; };
+  element.addEventListener('pointerup',finish); element.addEventListener('pointercancel',finish);
+  return {
+    draw(graph,points,selected,showPoints){current={graph,points,selected,showPoints};render();},
+    fit(points){if(!points.length)return;longitude=longitudeStart(points);const ps=points.map(p=>project(p.lat,p.lng<longitude?p.lng+360:p.lng));const xs=ps.map(p=>p.x),ys=ps.map(p=>p.y);view.x=(Math.min(...xs)+Math.max(...xs))/2;view.y=(Math.min(...ys)+Math.max(...ys))/2;view.width=Math.max(.004,(Math.max(...xs)-Math.min(...xs))*1.3,(Math.max(...ys)-Math.min(...ys))*2.1);render();},
+    focus(node){const p=project(node.lat,node.lng);p.x+=Math.round(view.x-p.x);view={x:p.x,y:p.y,width:node.scale==='local'?.016:.045};render();},
+    zoom(delta){view.width=Math.min(1.2,Math.max(.0002,view.width*(delta>0?.72:1.4)));render();},
+    destroy(){element.replaceChildren();},
+  };
+}
