@@ -47,3 +47,52 @@ function components(points, radius) {
 }
 function cover(points, bins, overlap, radius, scale) {
   const { projected, bounds } = geometry(points);
+  const stepX = (bounds.x1 - bounds.x0) / bins, stepY = (bounds.y1 - bounds.y0) / bins;
+  const halfX = stepX / (2 * (1 - overlap)), halfY = stepY / (2 * (1 - overlap));
+  const cells = [], nodes = [];
+  for (let row = 0; row < bins; row++) for (let col = 0; col < bins; col++) {
+    const cx = bounds.x0 + (col + .5) * stepX, cy = bounds.y0 + (row + .5) * stepY;
+    const members = projected.filter(p => Math.abs(p.x - cx) <= halfX + 1e-12 && Math.abs(p.y - cy) <= halfY + 1e-12);
+    if (!members.length) continue;
+    const center = unproject(cx, cy), side = 40075 * Math.cos(center.lat * RAD);
+    const cell = { id: `${scale}-${row}-${col}`, x0: cx - halfX, x1: cx + halfX, y0: cy - halfY, y1: cy + halfY,
+      members: members.map(p => p.id), density: members.length / Math.max(.01, 4 * halfX * halfY * side * side) };
+    cells.push(cell);
+    components(members, radius).forEach((group, index) => {
+      const position = unproject(group.reduce((sum, p) => sum + p.x, 0) / group.length, group.reduce((sum, p) => sum + p.y, 0) / group.length);
+      const applications = [...new Set(group.map(p => p.application))];
+      nodes.push({ id: `${cell.id}-${index}`, cell: cell.id, scale, ...position, members: group.map(p => p.id),
+        count: group.length, city: [...new Set(group.map(p => p.city))].join(' · '),
+        application: applications.length === 1 ? applications[0] : 'Mixed', meanAge: group.reduce((s, p) => s + p.age, 0) / group.length });
+    });
+  }
+  return { nodes, cells };
+}
+export function nerve(nodes) {
+  const memberships = new Map(), weights = new Map();
+  nodes.forEach((node, index) => node.members.forEach(id => {
+    if (!memberships.has(id)) memberships.set(id, []);
+    memberships.get(id).push(index);
+  }));
+  for (const owners of memberships.values()) for (let i = 0; i < owners.length; i++) for (let j = i + 1; j < owners.length; j++) {
+    const key = `${owners[i]}:${owners[j]}`;
+    weights.set(key, (weights.get(key) ?? 0) + 1);
+  }
+  return [...weights].map(([key, weight]) => {
+    const [a, b] = key.split(':').map(Number);
+    return { source: nodes[a].id, target: nodes[b].id, weight, crossScale: nodes[a].scale !== nodes[b].scale };
+  });
+}
+export function buildGraph(points, { bins = 5, overlap = .35, radius = 110, refine = true } = {}) {
+  if (!points.length) return { nodes: [], edges: [], cells: [], region: null, recordCount: 0 };
+  if (!Number.isInteger(bins) || bins < 2 || bins > 12 || !Number.isFinite(overlap) || overlap < 0 || overlap > .75 || !Number.isFinite(radius) || radius <= 0) throw new Error('Invalid clustering parameters.');
+  const initial = cover(points, bins, overlap, radius, 'global');
+  let nodes = initial.nodes, region = null;
+  if (refine) {
+    region = [...initial.cells].sort((a, b) => b.density - a.density || a.id.localeCompare(b.id))[0];
+    const ids = new Set(region.members);
+    const local = cover(points.filter(p => ids.has(p.id)), 5, overlap, radius / 5, 'local');
+    nodes = [...nodes.filter(node => node.members.some(id => !ids.has(id))), ...local.nodes];
+  }
+  return { nodes, edges: nerve(nodes), cells: initial.cells, region, recordCount: points.length };
+}
