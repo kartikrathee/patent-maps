@@ -28,3 +28,34 @@ test('refinement preserves outside nodes and introduces cross-scale bridges', ()
   const inside = new Set(refined.region.members);
   const outsideNodes = coarse.nodes.filter(n => n.members.some(id => !inside.has(id)));
   outsideNodes.forEach(node => assert.deepEqual(refined.nodes.find(n => n.id === node.id), node));
+  assert.ok(refined.nodes.some(n => n.scale === 'local'));
+  assert.ok(refined.edges.some(e => e.crossScale));
+  assert.equal(covered(refined).size, points.length);
+});
+test('isolated records, coincident coordinates, and empty searches remain valid', () => {
+  assert.equal(buildGraph([]).recordCount, 0);
+  const points = [point('a',40,-80),point('b',40,-80),point('c',-20,100)];
+  const graph = buildGraph(points, { radius: 1 });
+  assert.equal(covered(graph).size, 3);
+  assert.ok(graph.nodes.every(n => Number.isFinite(n.lat) && Number.isFinite(n.lng)));
+});
+test('the cover wraps the antimeridian without losing nearby records', () => {
+  const points = [point('west',10,179.9),point('east',10,-179.9)];
+  assert.ok(distanceKm(points[0],points[1]) < 25);
+  const graph = buildGraph(points, { radius: 50, refine: false });
+  assert.equal(covered(graph).size, 2);
+  assert.ok(graph.nodes.every(n => Math.abs(n.lng) > 179));
+});
+test('sample data and clustering are deterministic', () => {
+  assert.deepEqual(sampleData(), sampleData());
+  assert.deepEqual(buildGraph(sampleData()), buildGraph(sampleData()));
+});
+test('invalid import data is rejected before clustering', () => {
+  for (const input of [[], null, [null], [{lat:'40',lng:-75}], [{lat:90,lng:0}], [{id:'a',lat:0,lng:0},{id:'a',lat:1,lng:1}], [{lat:0,lng:0,age:-1}], Array.from({length:2001},()=>({lat:0,lng:0}))]) {
+    assert.throws(() => validateRecords(input));
+  }
+  assert.equal(validateRecords([{lat:0,lng:0}])[0].id, 'record-1');
+});
+test('invalid cover parameters cannot create missing or infinite clusters', () => {
+  for (const options of [{bins:1},{bins:2.5},{overlap:.9},{radius:0},{radius:NaN}]) assert.throws(()=>buildGraph(sampleData(),options));
+});
